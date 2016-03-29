@@ -1,0 +1,28 @@
+{
+  "name": "etdsolutions/email",
+  "minimum-stability": "dev",
+  "description": "Package Email du Framework ETD",
+  "homepage": "https://github.com/etd-framework/email",
+  "license": "Apache-2.0",
+  "authors": [
+    {
+      "name": "Jean-Baptiste Alleaume",
+      "email": "jb.alleaume@etd-solutions.com",
+      "homepage": "http://alleau.me",
+      "role": "Manager"
+    }
+  ],
+  "require": {
+    "joomla/application": "~2.0@dev",
+    "joomla/di": "~2.0@dev"
+  },
+  "suggest": {
+    "mandrill/mandrill": "Pour envoyer les emails par Mandrill",
+    "sparkpost/php-sparkpost": "Pour envoyer les emails par Sparkpost"
+  },
+  "autoload": {
+    "psr-4": {
+      "EtdSolutions\\Email\\": "src/"
+    }
+  }
+}
