@@ -13,7 +13,6 @@
     }
   ],
   "require": {
-    "joomla/application": "~2.0@dev",
     "joomla/di": "~2.0@dev"
   },
   "suggest": {
