@@ -45,12 +45,7 @@ class Email implements ContainerAwareInterface {
     public function __construct($container, $service = null) {
 
         $this->setContainer($container);
-
-        if (isset($service)) {
-            $this->service = $service;
-        } else {
-
-        }
+        $this->setService($service);
 
     }
 
@@ -169,8 +164,95 @@ class Email implements ContainerAwareInterface {
 
         return $this;
     }
+    /**
+     * On définit le service pour l'envoi des emails.
+     * Si aucun paramètre n'est fourni, on instancie le service défini dans la configuration.
+     *
+     * @param  ServiceInterface|string $service Une instance du service à utiliser ou le nom de la classe (facultatif)
+     *
+     * @return  $this
+     *
+     * @throws  \RuntimeException
+     */
+    public function setService($service = null) {
 
+        if (is_null($service)) {
+            $service = $this->getContainer()->get('config')->get('email.service.name');
+        }
 
+        // Si on a passé une chaine de caractère, c'est le nom de la classe à instancier.
+        if (is_string($service)) {
+
+            $class = '\\EtdSolutions\\Email\\Service\\' . ucfirst(strtolower($service)) . 'Service';
+            if (!class_exists($class)) {
+                throw new \RuntimeException(sprintf('Impossible de charger le service "%s"', $service));
+            }
+
+            // On récupère les options du service depuis la configuration.
+            $options = $this->getContainer()->get('config')->extract('email.service.options');
+
+            // On instancie le service.
+            $service = new $class(isset($options) ? $options->toArray() : null);
+
+        }
+
+        // Si le service est une instance de l'interface, on vérifie s'il est supporté.
+        if ($service instanceof ServiceInterface) {
+            if (!$service::isSupported()) {
+                throw new \RuntimeException(sprintf('Le service "%s" n\'est pas supporté dans cet environnement.', get_class($service)));
+            }
+        }
+
+        $this->service = $service;
+
+        return $this;
+    }
+
+    /**
+     * @return ServiceInterface
+     */
+    public function getService() {
+
+        return $this->service;
+    }
+
+    /**
+     * Donne les services disponibles.
+     *
+     * @return array Un tableau des services disponibles.
+     */
+    public static function getServices() {
+
+        $services = [];
+
+        // On récupère un iterator et on boucle sur les classes des services.
+        $iterator = new \DirectoryIterator(__DIR__ . '/Service');
+
+        foreach ($iterator as $file) {
+
+            $fileName = $file->getFilename();
+
+            // On charge seulement les fichiers PHP.
+            if (!$file->isFile() || $file->getExtension() != 'php') {
+                continue;
+            }
+
+            // On déduit le nom de la classe du nom du fichier.
+            $class = str_ireplace('.php', '', '\\EtdSolutions\\Email\\Service\\' . ucfirst(trim($fileName)));
+
+            // Si la classe n'existe pas, on passe au suivant.
+            if (!class_exists($class)) {
+                continue;
+            }
+
+            // Cool! La classe existe, on vérifie que le service est supporté sur le système.
+            if ($class::isSupported()) {
+                $services[] = str_ireplace('Service.php', '', $fileName);
+            }
+        }
+
+        return $services;
+    }
 
 
 

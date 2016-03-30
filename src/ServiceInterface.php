@@ -14,6 +14,11 @@ namespace EtdSolutions\Email;
  */
 interface ServiceInterface {
 
-
+    /**
+     * Teste si le service est supporté sur le système.
+     *
+     * @return  boolean  True en cas de succès, false sinon.
+     */
+    public static function isSupported();
 
 }
