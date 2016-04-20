@@ -16,15 +16,49 @@ class Email implements ContainerAwareInterface {
 
     use ContainerAwareTrait;
 
+    const tagBlock = [
+        '<%',
+        '%>'
+    ];
+
+    const tagVariable = [
+        '<=',
+        '>'
+    ];
+
+    const base64Regexp = "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$";
+
     /**
      * @var array Un tableau associatif des destinataires.
      */
-    protected $recipients;
+    protected $recipients = [];
+
+    protected $subject;
 
     /**
      * @var array Un tableau associatif de l'expéditeur.
      */
     protected $from;
+
+    /**
+     * @var array Un tableau associatif des données globales à passer au service.
+     */
+    protected $globalData = [];
+
+    /**
+     * @var array Un tableau associatif des données spécifiques aux destinataires à passer au service
+     */
+    protected $recipientsData = [];
+
+    /**
+     * @var array Un tableau associatif des pièces joints associées au message.
+     */
+    protected $attachments = [];
+
+    /**
+     * @var array Un tableau associatif des images inline associées au message.
+     */
+    protected $inlineImages = [];
 
     /**
      * @var string Le layout à utiliser pour générer le contenu de l'email.
@@ -37,26 +71,93 @@ class Email implements ContainerAwareInterface {
     protected $service;
 
     /**
+     * @var array Un tableau associatif de paramètres à passer au service pour l'envoi du message.
+     */
+    protected $serviceOptions = [];
+
+    /**
+     * @var \Joomla\Renderer\RendererInterface Le renderer pour le layout.
+     */
+    protected $renderer;
+
+    /**
+     * @var array Un tableau associatif des données à passer au renderer.
+     */
+    protected $rendererData = [];
+
+    /**
      * Constructeur
      *
-     * @param \Joomla\DI\Container $container Le container DI
-     * @param ServiceInterface     $service   Le fournisseur de service. Facultatif. Si non donné, on prend celui par défaut dans la configuration.
+     * @param \Joomla\DI\Container               $container Le container DI
+     * @param \Joomla\Renderer\RendererInterface $renderer  Le renderer pour le layout.
+     * @param ServiceInterface                   $service   Le fournisseur de service. Facultatif. Si non donné, on prend celui par défaut dans la configuration.
      */
-    public function __construct($container, $service = null) {
+    public function __construct($container, $renderer, $service = null) {
 
         $this->setContainer($container);
+        $this->setRenderer($renderer);
         $this->setService($service);
 
     }
 
     /**
-     * Efface les destinataires.
+     * Méthode pour envoyer l'email.
      *
-     * @return  Email
+     * @throws Exception\EmptyRecipientsException Si il n'y a aucun destinataire au message.
+     *
      */
-    public function clearRecipients() {
+    public function send() {
 
-        $this->recipients = [];
+        // On teste la présence d'au moins un destinataire.
+        if (empty($this->recipients)) {
+            throw new Exception\EmptyRecipientsException;
+        }
+
+        // On passe le sujet.
+        $this->service->setSubject($this->getSubject());
+
+        // On passe l'expéditeur.
+        $this->service->setFrom($this->getFrom());
+
+        // On passe les destinataires.
+        $this->service->setRecipients($this->getRecipients());
+
+        // On passe les données globales.
+        $this->service->setGlobalData($this->getGlobalData());
+
+        // On passe les données spécifiques aux destinataires.
+        $this->service->setRecipientsData($this->getRecipientsData());
+
+        // On passe les options d'envoi au service.
+        $this->service->setSendOptions($this->getServiceOptions());
+
+        // On effectue le rendu du layout.
+        $content = $this->render();
+
+        // On passe le contenu au service.
+        $this->service->setHTML($content);
+
+        // On envoi
+        return $this->service->send();
+
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getSubject() {
+
+        return $this->subject;
+    }
+
+    /**
+     * @param mixed $subject
+     *
+     * @return Email
+     */
+    public function setSubject($subject) {
+
+        $this->subject = $subject;
 
         return $this;
     }
@@ -76,7 +177,7 @@ class Email implements ContainerAwareInterface {
      *
      * @return Email
      */
-    public function setRecipients($recipients) {
+    public function setRecipients($recipients = []) {
 
         $this->recipients = $recipients;
 
@@ -94,13 +195,11 @@ class Email implements ContainerAwareInterface {
      */
     public function addRecipient($email, $name, $bcc = false) {
 
-        if (!array_key_exists($email, $this->recipients)) {
-            $this->recipients[$email] = [
-                'email' => $email,
-                'name'  => $name,
-                'bcc'   => $bcc
-            ];
-        }
+        $this->recipients[$email] = [
+            'email' => $email,
+            'name'  => $name,
+            'bcc'   => $bcc
+        ];
 
         return $this;
 
@@ -135,7 +234,10 @@ class Email implements ContainerAwareInterface {
     public function getFrom() {
 
         if (!isset($this->from)) {
-            return $this->getContainer()->get('config')->extract('email.from')->toArray();
+            return $this->getContainer()
+                        ->get('config')
+                        ->extract('email.from')
+                        ->toArray();
         }
 
         return $this->from;
@@ -164,6 +266,7 @@ class Email implements ContainerAwareInterface {
 
         return $this;
     }
+
     /**
      * On définit le service pour l'envoi des emails.
      * Si aucun paramètre n'est fourni, on instancie le service défini dans la configuration.
@@ -177,7 +280,9 @@ class Email implements ContainerAwareInterface {
     public function setService($service = null) {
 
         if (is_null($service)) {
-            $service = $this->getContainer()->get('config')->get('email.service.name');
+            $service = $this->getContainer()
+                            ->get('config')
+                            ->get('email.service.name');
         }
 
         // Si on a passé une chaine de caractère, c'est le nom de la classe à instancier.
@@ -189,7 +294,9 @@ class Email implements ContainerAwareInterface {
             }
 
             // On récupère les options du service depuis la configuration.
-            $options = $this->getContainer()->get('config')->extract('email.service.options');
+            $options = $this->getContainer()
+                            ->get('config')
+                            ->extract('email.service.options');
 
             // On instancie le service.
             $service = new $class(isset($options) ? $options->toArray() : null);
@@ -254,6 +361,300 @@ class Email implements ContainerAwareInterface {
         return $services;
     }
 
+    /**
+     * Retourne le renderer.
+     *
+     * @return \Joomla\Renderer\RendererInterface
+     */
+    public function getRenderer() {
 
+        return $this->renderer;
+    }
+
+    /**
+     * Défini le renderer.
+     *
+     * @param \Joomla\Renderer\RendererInterface $renderer
+     *
+     * @return Email
+     */
+    public function setRenderer($renderer) {
+
+        $this->renderer = $renderer;
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getGlobalData() {
+
+        return $this->globalData;
+    }
+
+    /**
+     * @param array $globalData
+     *
+     * @return Email
+     */
+    public function setGlobalData($globalData = []) {
+
+        $this->globalData = $globalData;
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une donnée globale.
+     *
+     * @param string $key   Le nom de la variable
+     * @param mixed  $value La valeur
+     *
+     * @return $this
+     */
+    public function addGlobalData($key, $value) {
+
+        $this->globalData[$key] = $value;
+
+        return $this;
+
+    }
+
+    /**
+     * @return array
+     */
+    public function getRecipientsData() {
+
+        return $this->recipientsData;
+    }
+
+    /**
+     * @param array $recipientsData
+     *
+     * @return Email;
+     */
+    public function setRecipientsData($recipientsData = []) {
+
+        $this->recipientsData = $recipientsData;
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une donnée spécifique à un destinataire.
+     *
+     * @param string       $email L'adresse email du destinataire.
+     * @param array|string $key   Le nom de la variable ou directement le tableau.
+     * @param mixed        $value La valeur
+     *
+     * @return $this
+     */
+    public function addRecipientData($email, $key, $value = null) {
+
+        if (!isset($this->recipientsData[$email])) {
+            $this->recipientsData[$email] = [];
+        }
+
+        if (is_array($key)) {
+            $this->recipientsData[$email] = $key;
+        } else {
+            $this->recipientsData[$email][$key] = $value;
+        }
+
+        return $this;
+
+    }
+
+    /**
+     * @return array
+     */
+    public function getRendererData() {
+
+        return $this->rendererData;
+    }
+
+    /**
+     * @param array $rendererData
+     *
+     * @return Email;
+     */
+    public function setRendererData($rendererData = []) {
+
+        $this->rendererData = $rendererData;
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une variable passée au renderer.
+     *
+     * @param string $key   Le nom de la variable
+     * @param mixed  $value La valeur
+     *
+     * @return $this
+     */
+    public function addRendererData($key, $value) {
+
+        $this->rendererData[$key] = $value;
+
+        return $this;
+
+    }
+
+    /**
+     * @return array
+     */
+    public function getAttachments() {
+
+        return $this->attachments;
+    }
+
+    /**
+     * @param array $attachments
+     *
+     * @return Email
+     */
+    public function setAttachments($attachments = []) {
+
+        $this->attachments = $attachments;
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une pièce jointe.
+     *
+     * @param string $type Le type MIME.
+     * @param string $name Le nom de la pièce jointe.
+     * @param string $data Les données encodées en base64.
+     *
+     * @return $this
+     */
+    public function addAttachment($type, $name, $data) {
+
+        // Si les données ne ressemblent pas à une chaine encodée en base64, on les encode.
+        if (!preg_match(Email::base64Regexp, $data)) {
+            $data = base64_encode($data);
+        }
+
+        $this->attachments[] = [
+            'type' => $type,
+            'name' => $name,
+            'data' => $data
+        ];
+
+        return $this;
+
+    }
+
+    /**
+     * @return array
+     */
+    public function getInlineImages() {
+
+        return $this->inlineImages;
+    }
+
+    /**
+     * @param array $inlineImages
+     *
+     * @return Email
+     */
+    public function setInlineImages($inlineImages = []) {
+
+        $this->inlineImages = $inlineImages;
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une pièce jointe.
+     *
+     * @param string $type Le type MIME.
+     * @param string $name Le nom de la pièce jointe.
+     * @param string $data Les données encodées en base64.
+     *
+     * @return $this
+     */
+    public function addInlineImage($type, $name, $data) {
+
+        // Si les données ne ressemblent pas à une chaine encodée en base64, on les encode.
+        if (!preg_match(Email::base64Regexp, $data)) {
+            $data = base64_encode($data);
+        }
+
+        $this->inlineImages[] = [
+            'type' => $type,
+            'name' => $name,
+            'data' => $data
+        ];
+
+        return $this;
+
+    }
+
+    /**
+     * @return array
+     */
+    public function getServiceOptions() {
+
+        return $this->serviceOptions;
+    }
+
+    /**
+     * @param array $serviceOptions
+     *
+     * @return Email
+     */
+    public function setServiceOptions($serviceOptions = []) {
+
+        $this->serviceOptions = $serviceOptions;
+
+        return $this;
+    }
+
+    /**
+     * @param string $key
+     * @param mixed  $value
+     */
+    public function addServiceOption($key, $value) {
+
+        $this->serviceOptions[$key] = $value;
+    }
+
+    public function clear() {
+
+        return $this->setRecipientsData()
+                    ->setRecipients()
+                    ->setAttachments()
+                    ->setGlobalData()
+                    ->setInlineImages()
+                    ->setRendererData()
+                    ->setServiceOptions();
+
+    }
+
+    public function getResults() {
+
+        return $this->service->getResults();
+
+    }
+
+    /**
+     * Méthode pour effectuer le rendu du layout.
+     *
+     * @return string Le rendu.
+     */
+    protected function render() {
+
+        $this->renderer
+                 ->getRenderer()
+                 ->getLoader()
+                 ->addPath(JPATH_TEMPLATES . '/emails');
+
+        return $this->renderer->render($this->layout, $this->rendererData);
+
+    }
 
 }

@@ -13,7 +13,8 @@
     }
   ],
   "require": {
-    "joomla/di": "~2.0@dev"
+    "joomla/di": "~2.0@dev",
+    "joomla/renderer": "~2.0@dev"
   },
   "suggest": {
     "mandrill/mandrill": "Pour envoyer les emails par Mandrill",
