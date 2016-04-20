@@ -173,6 +173,14 @@ class Email implements ContainerAwareInterface {
     }
 
     /**
+     * @return bool true s'il y a des destinataires, false sinon.
+     */
+    public function hasRecipients() {
+
+        return count($this->recipients) > 0;
+    }
+
+    /**
      * @param array $recipients
      *
      * @return Email
