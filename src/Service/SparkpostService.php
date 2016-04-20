@@ -187,6 +187,10 @@ class SparkPostService extends AbstractService {
             $message["attachments"] = $this->attachments;
         }
 
+        if (!empty($this->substitution_data)) {
+            $message["substitutionData"] = $this->substitution_data;
+        }
+
         try {
             $this->results = $this->sparky->transmission->send($message);
         } catch (\Exception $e) {
