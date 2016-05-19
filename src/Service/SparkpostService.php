@@ -194,6 +194,7 @@ class SparkPostService extends AbstractService {
         try {
             $this->results = $this->sparky->transmission->send($message);
         } catch (\Exception $e) {
+            $this->results = $e;
             return false;
         }
 
