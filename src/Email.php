@@ -588,7 +588,7 @@ class Email implements ContainerAwareInterface {
     public function addInlineImage($type, $name, $data) {
 
         // Si les données ne ressemblent pas à une chaine encodée en base64, on les encode.
-        if (!preg_match(Email::base64Regexp, $data)) {
+        if (!preg_match(chr(1) . Email::base64Regexp . chr(1), $data)) {
             $data = base64_encode($data);
         }
 
