@@ -128,6 +128,12 @@ class Email implements ContainerAwareInterface {
         // On passe les données spécifiques aux destinataires.
         $this->service->setRecipientsData($this->getRecipientsData());
 
+        // On passe les images inline.
+        $this->service->setInlineImages($this->getInlineImages());
+
+        // On passe les pièces jointes.
+        $this->service->setAttachments($this->getAttachments());
+
         // On passe les options d'envoi au service.
         $this->service->setSendOptions($this->getServiceOptions());
 
