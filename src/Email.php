@@ -667,7 +667,7 @@ class Email implements ContainerAwareInterface {
                  ->getLoader()
                  ->addPath(JPATH_TEMPLATES . '/emails');
 
-        return $this->renderer->render($this->layout, $this->rendererData);
+        return $this->renderer->render($this->layout . $this->getContainer()->get('config')->get('template.extension', 'twig'), $this->rendererData);
 
     }
 
