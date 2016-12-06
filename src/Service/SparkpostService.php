@@ -160,39 +160,39 @@ class SparkPostService extends AbstractService {
     public function send() {
 
         $message = [
-            "from"       => $this->from,
-            "subject"    => $this->subject,
-            "recipients" => array_values($this->recipients)
+        	"content" => [
+		        "from"       => $this->from,
+		        "subject"    => $this->subject
+	        ],
+	        "recipients" => array_values($this->recipients)
         ];
 
         if (!empty($this->html)) {
-            $message["html"] = $this->html;
+            $message["content"]["html"] = $this->html;
         }
 
         if (!empty($this->text)) {
-            $message["text"] = $this->text;
+            $message["content"]["text"] = $this->text;
         }
 
         $message = array_merge($message, $this->transmission_options);
 
         if (!empty($this->attachments)) {
-            $message["attachments"] = $this->attachments;
+            $message["content"]["attachments"] = $this->attachments;
         }
 
         if (!empty($this->images)) {
-            $message["inlineImages"] = $this->images;
-        }
-
-        if (!empty($this->attachments)) {
-            $message["attachments"] = $this->attachments;
+            $message["content"]["inline_images"] = $this->images;
         }
 
         if (!empty($this->substitution_data)) {
-            $message["substitutionData"] = $this->substitution_data;
+            $message["substitution_data"] = $this->substitution_data;
         }
 
+        $promise = $this->sparky->transmissions->post($message);
+
         try {
-            $this->results = $this->sparky->transmission->send($message);
+            $this->results = $promise->wait();
         } catch (\Exception $e) {
             $this->results = $e;
             return false;
