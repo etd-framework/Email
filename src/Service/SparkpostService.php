@@ -58,7 +58,7 @@ class SparkPostService extends AbstractService {
         return (
             class_exists("\\SparkPost\\SparkPost") &&
             class_exists("\\GuzzleHttp\\Client") &&
-            class_exists("\\Ivory\\HttpAdapter\\Guzzle6HttpAdapter")
+            class_exists("\\Http\\Adapter\\Guzzle6\\Client")
         );
 
     }
@@ -67,8 +67,8 @@ class SparkPostService extends AbstractService {
 
         parent::__construct($options);
 
-        $httpAdapter  = new \Ivory\HttpAdapter\Guzzle6HttpAdapter(new \GuzzleHttp\Client());
-        $this->sparky = new \SparkPost\SparkPost($httpAdapter, [
+        $httpClient = new \Http\Adapter\Guzzle6\Client((new \GuzzleHttp\Client()));
+        $this->sparky = new \SparkPost\SparkPost($httpClient, [
             'key' => $options['key']
         ]);
 
