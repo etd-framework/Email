@@ -41,6 +41,15 @@ interface ServiceInterface {
     public function setGlobalData($globalData);
 
     /**
+     * Définit les méta-données au message.
+     *
+     * @param array $metaData
+     *
+     * @return ServiceInterface
+     */
+    public function setMetaData($metaData);
+
+    /**
      * Définit les données spécifiques aux destinataires.
      *
      * @param array $recipientsData
@@ -48,6 +57,15 @@ interface ServiceInterface {
      * @return ServiceInterface
      */
     public function setRecipientsData($recipientsData);
+
+    /**
+     * Définit les méta-données spécifiques aux destinataires.
+     *
+     * @param array $recipientsMetaData
+     *
+     * @return ServiceInterface
+     */
+    public function setRecipientsMetaData($recipientsMetaData);
 
     /**
      * Définit les pièces joites.

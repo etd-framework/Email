@@ -46,9 +46,19 @@ class Email implements ContainerAwareInterface {
     protected $globalData = [];
 
     /**
+     * @var array Un tableau associatif des méta-données à passer au service.
+     */
+    protected $metaData = [];
+
+    /**
      * @var array Un tableau associatif des données spécifiques aux destinataires à passer au service
      */
     protected $recipientsData = [];
+
+    /**
+     * @var array Un tableau associatif des méta-données spécifiques aux destinataires à passer au service
+     */
+    protected $recipientsMetaData = [];
 
     /**
      * @var array Un tableau associatif des pièces joints associées au message.
@@ -125,8 +135,14 @@ class Email implements ContainerAwareInterface {
         // On passe les données globales.
         $this->service->setGlobalData($this->getGlobalData());
 
+        // On passe les données globales.
+        $this->service->setMetaData($this->getMetaData());
+
         // On passe les données spécifiques aux destinataires.
         $this->service->setRecipientsData($this->getRecipientsData());
+
+        // On passe les méta-données des destinataires.
+        $this->service->setRecipientsMetaData($this->getRecipientsMetaData());
 
         // On passe les images inline.
         $this->service->setInlineImages($this->getInlineImages());
@@ -438,6 +454,42 @@ class Email implements ContainerAwareInterface {
     /**
      * @return array
      */
+    public function getMetaData() {
+
+        return $this->metaData;
+    }
+
+    /**
+     * @param array $metaData
+     *
+     * @return Email
+     */
+    public function setMetaData($metaData = []) {
+
+        $this->metaData = $metaData;
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une méta-donnée.
+     *
+     * @param string $key   Le nom de la variable
+     * @param mixed  $value La valeur
+     *
+     * @return $this
+     */
+    public function addMetaData($key, $value) {
+
+        $this->metaData[$key] = $value;
+
+        return $this;
+
+    }
+
+    /**
+     * @return array
+     */
     public function getRecipientsData() {
 
         return $this->recipientsData;
@@ -474,6 +526,51 @@ class Email implements ContainerAwareInterface {
             $this->recipientsData[$email] = $key;
         } else {
             $this->recipientsData[$email][$key] = $value;
+        }
+
+        return $this;
+
+    }
+
+    /**
+     * @return array
+     */
+    public function getRecipientsMetaData() {
+
+        return $this->recipientsMetaData;
+    }
+
+    /**
+     * @param array $recipientsMetaData
+     *
+     * @return Email;
+     */
+    public function setRecipientsMetaData($recipientsMetaData = []) {
+
+        $this->recipientsMetaData = $recipientsMetaData;
+
+        return $this;
+    }
+
+    /**
+     * Ajoute une méta-donnée spécifique à un destinataire.
+     *
+     * @param string       $email L'adresse email du destinataire.
+     * @param array|string $key   Le nom de la variable ou directement le tableau.
+     * @param mixed        $value La valeur
+     *
+     * @return $this
+     */
+    public function addRecipientMetaData($email, $key, $value = null) {
+
+        if (!isset($this->recipientsMetaData[$email])) {
+            $this->recipientsMetaData[$email] = [];
+        }
+
+        if (is_array($key)) {
+            $this->recipientsMetaData[$email] = $key;
+        } else {
+            $this->recipientsMetaData[$email][$key] = $value;
         }
 
         return $this;
@@ -640,9 +737,11 @@ class Email implements ContainerAwareInterface {
     public function clear() {
 
         return $this->setRecipientsData()
+                    ->setRecipientsMetaData()
                     ->setRecipients()
                     ->setAttachments()
                     ->setGlobalData()
+                    ->setMetaData()
                     ->setInlineImages()
                     ->setRendererData()
                     ->setServiceOptions();

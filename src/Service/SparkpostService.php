@@ -29,6 +29,11 @@ class SparkPostService extends AbstractService {
     protected $substitution_data = [];
 
     /**
+     * @var array Transmission level metadata containing key/value pairs
+     */
+    protected $metadata = [];
+
+    /**
      * @var array
      */
     protected $from = [];
@@ -100,6 +105,13 @@ class SparkPostService extends AbstractService {
         return $this;
     }
 
+    public function setMetaData($metaData) {
+
+        $this->metadata = $metaData;
+
+        return $this;
+    }
+
     public function setRecipientsData($recipientsData) {
 
         foreach ($recipientsData as $email => $data) {
@@ -109,6 +121,38 @@ class SparkPostService extends AbstractService {
             }
 
             $this->recipients[$email]["substitution_data"] = $data;
+
+        }
+
+        return $this;
+
+    }
+
+    public function setRecipientsMetaData($recipientsMetaData) {
+
+        foreach ($recipientsMetaData as $email => $data) {
+
+            if (!isset($this->recipients[$email])) {
+                $this->recipients[$email] = [];
+            }
+
+            $this->recipients[$email]["metadata"] = $data;
+
+        }
+
+        return $this;
+
+    }
+
+    public function setRecipientsTags($recipientsTags) {
+
+        foreach ($recipientsTags as $email => $data) {
+
+            if (!isset($this->recipients[$email])) {
+                $this->recipients[$email] = [];
+            }
+
+            $this->recipients[$email]["tags"] = $data;
 
         }
 
@@ -187,6 +231,10 @@ class SparkPostService extends AbstractService {
 
         if (!empty($this->substitution_data)) {
             $message["substitution_data"] = $this->substitution_data;
+        }
+
+        if (!empty($this->metadata)) {
+            $message["metadata"] = $this->metadata;
         }
 
         $promise = $this->sparky->transmissions->post($message);
