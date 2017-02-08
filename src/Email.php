@@ -26,7 +26,7 @@ class Email implements ContainerAwareInterface {
         '>'
     ];
 
-    const base64Regexp = "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$";
+    const base64Regexp = "/^([A-Za-z0-9+\\/]{4})*([A-Za-z0-9+\\/]{4}|[A-Za-z0-9+\\/]{3}=|[A-Za-z0-9+\\/]{2}==)$/";
 
     /**
      * @var array Un tableau associatif des destinataires.
